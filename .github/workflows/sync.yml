@@ -1,0 +1,82 @@
+name: Sync Whoop + Garmin
+
+on:
+  schedule:
+    # Times are UTC. 13:30 UTC = 7:30am Denver in summer (6:30am in winter).
+    - cron: "30 13 * * *"
+    # Second pass catches mornings when a device synced late.
+    - cron: "0 17 * * *"
+  workflow_dispatch:
+    inputs:
+      days:
+        description: "Days to pull (leave blank for normal daily run; e.g. 365 to backfill)"
+        required: false
+        default: ""
+
+permissions:
+  contents: write   # keep-alive commit (GitHub pauses schedules on quiet public repos)
+  pages: write
+  id-token: write
+
+concurrency:
+  group: bodylog-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Download previous data
+        run: |
+          OWNER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
+          REPO="${{ github.event.repository.name }}"
+          curl -fsSL "https://${OWNER}.github.io/${REPO}/data.enc.json?t=$(date +%s)" -o prev.enc.json || echo "No previous data yet"
+
+      - name: Pull data and build dashboard
+        env:
+          WHOOP_CLIENT_ID: ${{ secrets.WHOOP_CLIENT_ID }}
+          WHOOP_CLIENT_SECRET: ${{ secrets.WHOOP_CLIENT_SECRET }}
+          WHOOP_REFRESH_TOKEN: ${{ secrets.WHOOP_REFRESH_TOKEN }}
+          GARMIN_TOKENS: ${{ secrets.GARMIN_TOKENS }}
+          DASH_PASSPHRASE: ${{ secrets.DASH_PASSPHRASE }}
+          BACKFILL_DAYS: ${{ github.event.inputs.days }}
+        run: python sync.py --prev prev.enc.json --out _site
+
+      - name: Save rotated login tokens
+        if: always()
+        env:
+          GH_TOKEN: ${{ secrets.SECRETS_PAT }}
+        run: |
+          if [ -s .tokens/whoop_refresh ]; then gh secret set WHOOP_REFRESH_TOKEN < .tokens/whoop_refresh && echo "Whoop token saved"; fi
+          if [ -s .tokens/garmin.json ];   then gh secret set GARMIN_TOKENS < .tokens/garmin.json && echo "Garmin token saved"; fi
+          rm -rf .tokens
+
+      - name: Keep schedule alive
+        run: |
+          LAST=$(git log -1 --format=%ct)
+          if [ $(( $(date +%s) - LAST )) -gt $(( 45 * 86400 )) ]; then
+            git config user.name "bodylog-bot"
+            git config user.email "bodylog-bot@users.noreply.github.com"
+            git commit --allow-empty -m "keep-alive" && git push
+          fi
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  deploy:
+    needs: sync
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+    steps:
+      - uses: actions/deploy-pages@v4
