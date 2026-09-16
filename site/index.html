@@ -1,0 +1,755 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Body log · Whoop + Garmin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<meta name="robots" content="noindex">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🫀</text></svg>">
+<style>
+:root{
+  --paper:#EEF2EF; --panel:#F8FAF8; --ink:#1B2730; --muted:#5B6870; --line:#D3DAD5;
+  --whoop:#6A4DC6; --garmin:#10827B; --flag:#A86400; --focus:#2F6FDB;
+  --num:"Big Shoulders Display", "Arial Narrow", "Roboto Condensed", Impact, sans-serif;
+  --ui:"Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --paper:#11171B; --panel:#172026; --ink:#E2E9EB; --muted:#94A2A8; --line:#29343A;
+    --whoop:#A68FF2; --garmin:#3CC0B5; --flag:#E0A040; --focus:#7FA8F5; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --paper:#11171B; --panel:#172026; --ink:#E2E9EB; --muted:#94A2A8; --line:#29343A;
+  --whoop:#A68FF2; --garmin:#3CC0B5; --flag:#E0A040; --focus:#7FA8F5; color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--paper);color:var(--ink);font:15px/1.55 var(--ui);-webkit-font-smoothing:antialiased}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--focus);outline-offset:2px}
+.wrap{max-width:1180px;margin:0 auto;padding:20px clamp(14px,3vw,32px) 64px}
+header.top{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding:8px 0 22px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:baseline;gap:12px;margin-right:auto}
+.brand h1{font:800 44px/0.9 var(--num);letter-spacing:.01em;margin:0}
+.brand .pair{font-size:13px;color:var(--muted)}
+.pair b{font-weight:700}.w{color:var(--whoop)}.g{color:var(--garmin)}
+.seg{display:inline-flex;border:1px solid var(--line);border-radius:999px;padding:3px;background:var(--panel)}
+.seg button{border:0;background:none;padding:5px 12px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:600;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--paper)}
+.btn{border:1px solid var(--line);background:var(--panel);padding:7px 14px;border-radius:8px;cursor:pointer;font-weight:600;font-size:14px}
+.btn:hover{border-color:var(--muted)}
+.btn.primary{background:var(--ink);color:var(--paper);border-color:var(--ink)}
+.banner{margin:16px 0 0;padding:10px 14px;border-left:3px solid var(--flag);background:var(--panel);font-size:14px;display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.banner span{margin-right:auto}
+
+/* latest night */
+.latest{padding:26px 0 8px}
+.latest h2,.sec h2{font:700 28px/1 var(--num);margin:0 0 4px;letter-spacing:.01em}
+.sub{color:var(--muted);font-size:13px;margin:0 0 18px}
+.stats{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:0;border-top:1px solid var(--line)}
+.stat{padding:14px 16px 16px 0;border-bottom:1px solid var(--line)}
+.stat .lab{font-size:13px;color:var(--muted);font-weight:600}
+.stat .val{font:700 clamp(40px,5vw,58px)/1 var(--num);white-space:nowrap;margin:4px 0 6px;font-variant-numeric:tabular-nums}
+.stat .val small{font:600 15px var(--ui);color:var(--muted);margin-left:4px}
+.src{display:inline-flex;align-items:center;gap:6px;font-size:12px;color:var(--muted)}
+.src i{width:9px;height:9px;border-radius:50%;display:inline-block;flex:none}
+.src i.whoop{background:var(--whoop)} .src i.garmin{background:var(--garmin)}
+.src i.avg{background:linear-gradient(90deg,var(--whoop) 50%,var(--garmin) 50%)}
+.src i.fill{background:none;border:2px solid var(--flag)}
+.stagebar{display:flex;height:6px;border-radius:3px;overflow:hidden;margin:2px 0 6px;max-width:170px;background:var(--line)}
+.stagebar span{display:block;height:100%}
+.st-deep{background:#2E4F8F}.st-rem{background:#6F8FD8}.st-light{background:#B8C8EE}.st-awake{background:#E8B26A}
+
+/* charts */
+.sec{padding:36px 0 0}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,460px),1fr));gap:18px}
+.chart{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px 16px 10px;position:relative;min-width:0}
+.chart .ch{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.chart h3{margin:0;font-size:15px;font-weight:700}
+.chart .avg{font:700 26px/1 var(--num)}
+.chart .avg small{font:500 12px var(--ui);color:var(--muted);margin-left:4px}
+.legend{display:flex;gap:14px;font-size:12px;color:var(--muted);margin:4px 0 2px;flex-wrap:wrap}
+.legend span{display:inline-flex;align-items:center;gap:5px}
+.legend .ln{width:16px;height:0;border-top:2px solid}
+.chart svg{width:100%;height:auto;display:block;overflow:visible;touch-action:pan-y}
+.axis{font:11px var(--ui);fill:var(--muted)}
+.grid{stroke:var(--line);stroke-width:1}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--paper);font-size:12px;padding:6px 9px;border-radius:6px;white-space:nowrap;transform:translate(-50%,-110%);opacity:0;transition:opacity .1s;z-index:3;line-height:1.45}
+.tip.on{opacity:1}
+.note{font-size:12px;color:var(--muted);margin:4px 0 0}
+
+/* tables */
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:12px;background:var(--panel)}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:10px 14px;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:12px;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.r,th.r{text-align:right}
+.chip{font-size:12px;padding:2px 8px;border-radius:999px;border:1px solid var(--line);color:var(--muted)}
+.chip.both{border-color:var(--ink);color:var(--ink)}
+
+/* onboarding */
+.onb{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:18px;padding:28px 0 0}
+.dev{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:22px 22px 18px;border-top:5px solid}
+.dev.whoop{border-top-color:var(--whoop)} .dev.garmin{border-top-color:var(--garmin)}
+.dev h2{font:800 34px/1 var(--num);margin:0 0 10px}
+.dev ol{padding-left:20px;margin:0 0 14px;max-width:60ch}
+.dev li{margin:0 0 8px}
+.dev code{font-size:13px;background:var(--paper);padding:1px 5px;border-radius:4px;word-break:break-all}
+.intro{max-width:66ch;padding-top:28px}
+.intro p{margin:0 0 10px}
+.drop{margin-top:18px;border:2px dashed var(--line);border-radius:14px;padding:26px 18px;text-align:center;background:var(--panel)}
+.drop.over{border-color:var(--focus);background:color-mix(in srgb,var(--focus) 8%,var(--panel))}
+.drop p{margin:0 0 12px}
+.drop .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.status{font-size:13px;color:var(--muted);margin-top:10px;min-height:1.4em}
+
+dialog{border:1px solid var(--line);border-radius:14px;background:var(--panel);color:var(--ink);padding:0;width:min(680px,94vw);max-height:88vh}
+dialog::backdrop{background:rgba(10,15,18,.45)}
+.dlg{padding:22px 24px}
+.dlg h2{font:800 32px/1 var(--num);margin:0 0 6px}
+.rule{padding:14px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:1fr auto;gap:4px 14px;align-items:start}
+.rule b{font-size:15px}
+.rule p{grid-column:1/-1;margin:0;font-size:13px;color:var(--muted);max-width:62ch}
+.rule select{padding:5px 8px;border:1px solid var(--line);border-radius:6px;background:var(--paper)}
+.dlg .foot{display:flex;justify-content:flex-end;gap:10px;padding-top:14px;border-top:1px solid var(--line)}
+.hidden{display:none!important}
+@media (max-width:560px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}.stat .val{font-size:40px}.brand h1{font-size:36px}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+.updated{font-size:13px;color:var(--muted)}
+.lock{max-width:440px;margin:9vh auto 0;background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:28px 26px}
+.lock h2{font:800 36px/1 var(--num);margin:0 0 8px}
+.lock label{display:block;font-size:13px;font-weight:600;margin:16px 0 6px}
+.lock input[type=password]{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--paper)}
+.lock .chk{display:flex;gap:8px;align-items:center;font-weight:500;margin:12px 0 18px}
+.lock .btn{width:100%;padding:10px}
+#unlockMsg{font-size:13px;color:var(--muted);min-height:1.4em;margin:10px 0 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div class="brand"><h1>Body log</h1><span class="pair"><b class="w">Whoop</b> + <b class="g">Garmin</b>, merged</span></div>
+    <div id="topActions" class="hidden" style="display:contents">
+      <span class="updated" id="updated"></span>
+      <div class="seg" id="range" role="group" aria-label="Date range">
+        <button data-d="7">7d</button><button data-d="30" aria-pressed="true">30d</button><button data-d="90">90d</button><button data-d="365">1y</button><button data-d="0">All</button>
+      </div>
+      <button class="btn" id="openRules">Source rules</button>
+      <button class="btn" id="lockBtn" title="Forget the saved key on this device">Lock</button>
+    </div>
+  </header>
+
+  <div id="syncBanner" class="banner hidden"><span id="syncMsg"></span></div>
+
+  <section id="lock" class="lock">
+    <h2>Unlock</h2>
+    <p class="sub" id="lockIntro" style="margin:0">Your health data is encrypted. Enter the passphrase you saved as DASH_PASSPHRASE.</p>
+    <form id="unlockForm">
+      <label for="pass">Passphrase</label>
+      <input type="password" id="pass" autocomplete="current-password" required>
+      <label class="chk"><input type="checkbox" id="remember" checked> Stay unlocked on this device</label>
+      <button class="btn primary" id="unlockBtn">Unlock</button>
+      <p id="unlockMsg" aria-live="polite"></p>
+    </form>
+  </section>
+
+  <!-- dashboard -->
+  <main id="dash" class="hidden">
+    <section class="latest">
+      <h2 id="latestTitle">Latest</h2>
+      <p class="sub" id="latestSub"></p>
+      <div class="stats" id="stats"></div>
+    </section>
+
+    <section class="sec">
+      <h2>Trends</h2>
+      <p class="sub" id="trendSub">Thick line is the merged value. Thin lines are each device's own reading. Hollow dots are days one device was missing and the other filled in, adjusted for their usual difference.</p>
+      <div class="charts" id="charts"></div>
+    </section>
+
+    <section class="sec">
+      <h2>Where your devices disagree</h2>
+      <p class="sub">Nights both devices recorded. A steady offset is normal and gets corrected for; a large, erratic gap means one device is struggling (loose fit, missed sleep).</p>
+      <div class="tbl"><table id="agree"></table></div>
+    </section>
+
+    <section class="sec">
+      <h2>Workouts</h2>
+      <p class="sub" id="wkSub">Sessions recorded on both devices are combined into one row.</p>
+      <div class="tbl"><table id="workouts"></table></div>
+    </section>
+  </main>
+</div>
+
+
+
+<dialog id="rulesDlg"><div class="dlg">
+  <h2>Source rules</h2>
+  <p class="sub">For each measurement both devices take, this is which one is trusted and why. Defaults are my best read of each device's strengths; change any of them.</p>
+  <div id="rules"></div>
+  <div class="foot"><button class="btn" id="resetRules">Reset to defaults</button><button class="btn primary" data-close>Done</button></div>
+</div></dialog>
+<script>
+/* ---------- parsing + merging logic (no DOM) ---------- */
+const L = (function () {
+  const pad = (n) => String(n).padStart(2, "0");
+  const dkey = (d) => d.getFullYear() + "-" + pad(d.getMonth() + 1) + "-" + pad(d.getDate());
+  const num = (v) => {
+    if (v === null || v === undefined || v === "") return null;
+    const n = typeof v === "number" ? v : parseFloat(String(v).replace(/[^0-9.\-eE]/g, ""));
+    return Number.isFinite(n) ? n : null;
+  };
+  const parseLocal = (s) => {
+    if (!s) return null;
+    const t = String(s).trim().replace(" ", "T").replace(/([+-]\d\d):?(\d\d)$/, "");
+    const d = new Date(t);
+    return isNaN(d) ? null : d;
+  };
+  const emptyDB = () => ({ daily: {}, workouts: [], sources: { whoop: 0, garmin: 0 } });
+  const day = (db, k, src) => {
+    db.daily[k] = db.daily[k] || {};
+    db.daily[k][src] = db.daily[k][src] || {};
+    return db.daily[k][src];
+  };
+  const setIf = (o, key, v) => { if (v !== null && v !== undefined && Number.isFinite(v)) o[key] = v; };
+
+  /* ---- WHOOP CSV ---- */
+  function col(headers, ...needles) {
+    const low = headers.map((h) => h.toLowerCase());
+    for (const n of needles) {
+      const i = low.findIndex((h) => h.includes(n));
+      if (i >= 0) return headers[i];
+    }
+    return null;
+  }
+  function whoopKind(headers) {
+    const h = headers.join("|").toLowerCase();
+    if (h.includes("workout start time") || h.includes("activity strain")) return "workouts";
+    if (h.includes("recovery score") || h.includes("day strain")) return "cycles";
+    if (h.includes("sleep onset") && h.includes("nap")) return "sleeps";
+    if (h.includes("sleep onset")) return "cycles";
+    return null;
+  }
+  function ingestWhoopRows(db, rows, headers) {
+    const kind = whoopKind(headers);
+    if (!kind) return 0;
+    const c = (...n) => col(headers, ...n);
+    let count = 0;
+    if (kind === "cycles" || kind === "sleeps") {
+      const C = {
+        wake: c("wake onset"), start: c("cycle start time", "sleep onset"), nap: c("nap"),
+        rec: c("recovery score"), rhr: c("resting heart rate"), hrv: c("heart rate variability"),
+        skin: c("skin temp"), spo2: c("blood oxygen"), strain: c("day strain"), kcal: c("energy burned"),
+        perf: c("sleep performance"), resp: c("respiratory rate"), asleep: c("asleep duration"),
+        light: c("light sleep"), deep: c("deep (sws)", "deep"), rem: c("rem duration"),
+        awake: c("awake duration"), eff: c("sleep efficiency"), need: c("sleep need"),
+      };
+      for (const r of rows) {
+        if (C.nap && String(r[C.nap]).toLowerCase() === "true") continue;
+        const wake = parseLocal(r[C.wake]);
+        let d = wake;
+        if (!d) { const s = parseLocal(r[C.start]); if (!s) continue; d = new Date(s.getTime() + 8 * 3600e3); }
+        const o = day(db, dkey(d), "whoop");
+        setIf(o, "recovery", num(r[C.rec])); setIf(o, "rhr", num(r[C.rhr])); setIf(o, "hrv", num(r[C.hrv]));
+        setIf(o, "skinTemp", num(r[C.skin])); setIf(o, "spo2", num(r[C.spo2])); setIf(o, "resp", num(r[C.resp]));
+        setIf(o, "sleepPerf", num(r[C.perf])); setIf(o, "sleepEff", num(r[C.eff]));
+        setIf(o, "sleepMin", num(r[C.asleep])); setIf(o, "lightMin", num(r[C.light]));
+        setIf(o, "deepMin", num(r[C.deep])); setIf(o, "remMin", num(r[C.rem])); setIf(o, "awakeMin", num(r[C.awake]));
+        if (kind === "cycles") { setIf(o, "strain", num(r[C.strain])); setIf(o, "kcal", num(r[C.kcal])); }
+        count++;
+      }
+    } else {
+      const C = {
+        start: c("workout start time"), end: c("workout end time"), dur: c("duration (min)"),
+        name: c("activity name"), strain: c("activity strain"), kcal: c("energy burned"),
+        max: c("max hr"), avg: c("average hr"), dist: c("distance (meters)", "distance"),
+      };
+      for (const r of rows) {
+        const s = parseLocal(r[C.start]); if (!s) continue;
+        const e = parseLocal(r[C.end]);
+        const durMin = num(r[C.dur]) ?? (e ? (e - s) / 60000 : null);
+        db.workouts.push({
+          src: "whoop", start: s.getTime(), end: e ? e.getTime() : s.getTime() + (durMin || 0) * 60000,
+          name: r[C.name] || "Workout", durMin, strain: num(r[C.strain]), kcal: num(r[C.kcal]),
+          avgHr: num(r[C.avg]), maxHr: num(r[C.max]), distM: num(r[C.dist]),
+        });
+        count++;
+      }
+    }
+    if (count) db.sources.whoop += count;
+    return count;
+  }
+
+  /* ---- GARMIN JSON ---- */
+  const deepFind = (obj, keys, depth = 3) => {
+    if (!obj || typeof obj !== "object" || depth < 0) return null;
+    for (const k of keys) if (k in obj && num(obj[k]) !== null && typeof obj[k] !== "object") return num(obj[k]);
+    for (const v of Object.values(obj)) {
+      if (v && typeof v === "object" && !Array.isArray(v)) { const f = deepFind(v, keys, depth - 1); if (f !== null) return f; }
+    }
+    return null;
+  };
+  const tsToDate = (v, isLocal) => {
+    if (v === null || v === undefined) return null;
+    let d;
+    if (typeof v === "number") d = new Date(v);
+    else d = new Date(String(v).replace(" ", "T") + (/[zZ]|[+-]\d\d:?\d\d$/.test(v) || isLocal ? "" : "Z"));
+    if (isNaN(d)) return null;
+    if (isLocal && typeof v === "number") d = new Date(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), d.getUTCHours(), d.getUTCMinutes(), d.getUTCSeconds());
+    return d;
+  };
+  function collectRecords(json, out = [], depth = 0) {
+    if (depth > 4 || !json) return out;
+    if (Array.isArray(json)) { for (const x of json) collectRecords(x, out, depth + 1); return out; }
+    if (typeof json === "object") {
+      if ("calendarDate" in json || "activityType" in json || "sleepStartTimestampGMT" in json) out.push(json);
+      else for (const v of Object.values(json)) if (v && typeof v === "object") collectRecords(v, out, depth + 1);
+    }
+    return out;
+  }
+  const cal = (v) => {
+    if (!v) return null;
+    if (typeof v === "string") return v.slice(0, 10);
+    if (typeof v === "object" && v.date) return String(v.date).slice(0, 10);
+    return null;
+  };
+  // pick unit interpretation that yields plausible speed
+  function garminDurDist(a) {
+    let dur = num(a.duration) ?? num(a.elapsedDuration) ?? num(a.movingDuration);
+    let dist = num(a.distance);
+    let durS = null;
+    if (dur !== null) durS = dur > 50000 ? dur / 1000 : dur; // ms vs s (50000 s ≈ 14h)
+    let distM = null;
+    if (dist !== null && dist > 0 && durS) {
+      const asCm = dist / 100 / durS, asM = dist / durS;
+      distM = asCm >= 0.3 && asCm <= 30 ? dist / 100 : asM <= 30 ? dist : dist / 100;
+    } else if (dist === 0) distM = 0;
+    return { durMin: durS !== null ? durS / 60 : null, distM };
+  }
+  function ingestGarminJSON(db, json) {
+    const recs = collectRecords(json);
+    let count = 0;
+    for (const r of recs) {
+      if ("activityType" in r && ("startTimeGmt" in r || "startTimeLocal" in r || "beginTimestamp" in r)) {
+        const s = r.startTimeGmt != null ? tsToDate(r.startTimeGmt, false)
+          : r.beginTimestamp != null ? tsToDate(r.beginTimestamp, false) : tsToDate(r.startTimeLocal, true);
+        if (!s) continue;
+        const { durMin, distM } = garminDurDist(r);
+        const t = typeof r.activityType === "string" ? r.activityType : r.activityType?.typeKey || "activity";
+        db.workouts.push({
+          src: "garmin", start: s.getTime(), end: s.getTime() + (durMin || 0) * 60000,
+          name: r.name || t.replace(/_/g, " "), type: t, durMin, distM,
+          kcal: num(r.calories), avgHr: num(r.avgHr) ?? num(r.averageHR), maxHr: num(r.maxHr) ?? num(r.maxHR),
+        });
+        count++; continue;
+      }
+      const k = cal(r.calendarDate);
+      if (!k) continue;
+      const o = day(db, k, "garmin");
+      let touched = false;
+      const put = (key, v) => { if (v !== null && Number.isFinite(v)) { o[key] = v; touched = true; } };
+      // sleep
+      if ("deepSleepSeconds" in r || "sleepStartTimestampGMT" in r) {
+        const deep = num(r.deepSleepSeconds), light = num(r.lightSleepSeconds), rem = num(r.remSleepSeconds), awake = num(r.awakeSleepSeconds);
+        if (deep !== null || light !== null) {
+          put("deepMin", deep !== null ? deep / 60 : null); put("lightMin", light !== null ? light / 60 : null);
+          put("remMin", rem !== null ? rem / 60 : null); put("awakeMin", awake !== null ? awake / 60 : null);
+          put("sleepMin", ((deep || 0) + (light || 0) + (rem || 0)) / 60);
+        }
+        put("sleepScore", deepFind(r.sleepScores || {}, ["overallScore", "value"]) ?? num(r.overallSleepScore?.value));
+        put("resp", num(r.averageRespiration) ?? num(r.averageRespirationValue));
+        put("spo2", deepFind(r.spo2SleepSummary || {}, ["averageSPO2", "averageSpO2", "averageSpO2Value"]) ?? num(r.averageSpO2Value));
+        put("hrv", num(r.avgOvernightHrv));
+      }
+      // daily summary (UDS)
+      put("steps", num(r.totalSteps));
+      if (r.restingHeartRate != null) put("rhr", num(r.restingHeartRate));
+      put("kcal", num(r.totalKilocalories));
+      put("activeKcal", num(r.activeKilocalories));
+      const stress = r.allDayStress?.aggregatorList?.find?.((x) => x.type === "TOTAL")?.averageStressLevel ?? r.averageStressLevel;
+      if (num(stress) !== null && num(stress) >= 0) put("stress", num(stress));
+      const bbList = r.bodyBattery?.bodyBatteryStatList;
+      if (Array.isArray(bbList)) {
+        const hi = bbList.find((x) => x.bodyBatteryStatType === "HIGHEST");
+        if (hi) put("bodyBattery", num(hi.statsValue));
+      } else put("bodyBattery", num(r.bodyBatteryHighestValue) ?? num(r.maxBodyBattery));
+      // hrv files
+      const hrv = num(r.lastNightAvg) ?? deepFind(r.hrvSummary || {}, ["lastNightAvg"]) ?? (r.hrvValue != null && !r.startTimestampGMT ? num(r.hrvValue) : null);
+      if (hrv !== null) put("hrv", hrv);
+      if (touched) count++;
+      else if (!Object.keys(o).length) delete db.daily[k].garmin;
+    }
+    if (count) db.sources.garmin += count;
+    return count;
+  }
+
+  /* ---- metric rules ---- */
+  const METRICS = [
+    { key: "hrv", label: "HRV", unit: "ms", dec: 0, def: "whoop", shared: true,
+      why: "Whoop samples all night and scores HRV from deep sleep, the calmest and most repeatable window. Garmin averages the whole night, so it usually reads lower. The two aren't interchangeable, so one device carries the trend and the other only fills gaps, shifted by their typical difference." },
+    { key: "rhr", label: "Resting heart rate", unit: "bpm", dec: 0, def: "whoop", shared: true,
+      why: "Whoop takes resting HR during sleep. Garmin's daily figure can be nudged by a quiet afternoon or a missed night. Sleep-based RHR is the more stable signal for recovery trends." },
+    { key: "sleepMin", label: "Sleep", unit: "h", dec: 1, scale: 1 / 60, def: "whoop", shared: true,
+      why: "Both overcount sleep compared with a lab sleep test. Published comparisons have generally found Whoop a little closer on sleep versus wake than wrist watches. Stage splits (deep, REM) from either device are rough." },
+    { key: "resp", label: "Respiratory rate", unit: "rpm", dec: 1, def: "whoop", shared: true,
+      why: "Both derive breathing rate from heart-rate rhythm during sleep. Whoop's reading is taken over the full sleep period, so it's used first." },
+    { key: "spo2", label: "Blood oxygen", unit: "%", dec: 0, def: "avg", shared: true,
+      why: "Consumer wrist and arm SpO₂ is imprecise on both devices. Averaging two independent noisy readings is closer to the truth than trusting either alone." },
+    { key: "kcal", label: "Calories burned", unit: "kcal", dec: 0, def: "avg", shared: true,
+      why: "Both are estimates from heart rate and body stats, and each can be off by 20% or more. Averaging two independent estimates dampens each one's bias." },
+    { key: "steps", label: "Steps", unit: "", dec: 0, def: "garmin", shared: false,
+      why: "Garmin counts steps from a wrist accelerometer with a long validation record." },
+    { key: "recovery", label: "Recovery", unit: "%", dec: 0, def: "whoop", shared: false, why: "Whoop-only score." },
+    { key: "strain", label: "Day strain", unit: "", dec: 1, def: "whoop", shared: false, why: "Whoop-only score." },
+    { key: "bodyBattery", label: "Body Battery peak", unit: "", dec: 0, def: "garmin", shared: false, why: "Garmin-only score." },
+    { key: "stress", label: "Avg stress", unit: "", dec: 0, def: "garmin", shared: false, why: "Garmin-only score." },
+    { key: "sleepScore", label: "Garmin sleep score", unit: "", dec: 0, def: "garmin", shared: false, why: "Garmin-only score." },
+    { key: "sleepPerf", label: "Whoop sleep performance", unit: "%", dec: 0, def: "whoop", shared: false, why: "Whoop-only score." },
+    { key: "skinTemp", label: "Skin temp", unit: "°C", dec: 1, def: "whoop", shared: false, why: "Whoop-only sensor." },
+  ];
+
+  const median = (a) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); const m = s.length >> 1; return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2; };
+
+  function agreement(db, key) {
+    const diffs = [], xs = [], ys = [];
+    for (const k in db.daily) {
+      const w = db.daily[k].whoop?.[key], g = db.daily[k].garmin?.[key];
+      if (w != null && g != null) { diffs.push(g - w); xs.push(w); ys.push(g); }
+    }
+    if (!diffs.length) return { n: 0 };
+    const mx = xs.reduce((a, b) => a + b, 0) / xs.length, my = ys.reduce((a, b) => a + b, 0) / ys.length;
+    let sxy = 0, sxx = 0, syy = 0;
+    for (let i = 0; i < xs.length; i++) { sxy += (xs[i] - mx) * (ys[i] - my); sxx += (xs[i] - mx) ** 2; syy += (ys[i] - my) ** 2; }
+    return { n: diffs.length, offset: median(diffs), typicalGap: median(diffs.map(Math.abs)), r: sxx && syy ? sxy / Math.sqrt(sxx * syy) : null };
+  }
+
+  // returns {value, from: 'whoop'|'garmin'|'avg'|'whoop*'|'garmin*'} where * = gap-filled & offset-adjusted
+  function mergedDaily(db, rules) {
+    const offsets = {};
+    for (const m of METRICS) if (m.shared) { const a = agreement(db, m.key); offsets[m.key] = a.n >= 5 ? a.offset : 0; }
+    const out = {};
+    for (const k of Object.keys(db.daily).sort()) {
+      const row = {};
+      for (const m of METRICS) {
+        const w = db.daily[k].whoop?.[m.key], g = db.daily[k].garmin?.[m.key];
+        const mode = rules[m.key] || m.def;
+        let v = null, from = null;
+        if (mode === "avg") {
+          if (w != null && g != null) { v = (w + g) / 2; from = "avg"; }
+          else if (w != null) { v = w; from = "whoop"; } else if (g != null) { v = g; from = "garmin"; }
+        } else if (mode === "whoop") {
+          if (w != null) { v = w; from = "whoop"; } else if (g != null) { v = g - (offsets[m.key] || 0); from = "garmin*"; }
+        } else {
+          if (g != null) { v = g; from = "garmin"; } else if (w != null) { v = w + (offsets[m.key] || 0); from = "whoop*"; }
+        }
+        if (v != null) row[m.key] = { v, from, w, g };
+      }
+      // stages follow the sleep source
+      const sleepSrc = row.sleepMin?.from?.replace("*", "");
+      const src = sleepSrc === "garmin" ? db.daily[k].garmin : db.daily[k].whoop;
+      if (src) row.stages = { deep: src.deepMin, rem: src.remMin, light: src.lightMin, awake: src.awakeMin, from: sleepSrc };
+      out[k] = row;
+    }
+    return { days: out, offsets };
+  }
+
+  function mergedWorkouts(db, rules) {
+    const hrPref = rules.workoutHr || "garmin";
+    const ws = db.workouts.filter((w) => w.src === "whoop").sort((a, b) => a.start - b.start);
+    const gs = db.workouts.filter((w) => w.src === "garmin").sort((a, b) => a.start - b.start);
+    const used = new Set(), out = [];
+    for (const g of gs) {
+      let best = null, bestOv = 0;
+      for (const w of ws) {
+        if (used.has(w)) continue;
+        if (w.start > g.end + 600e3) break;
+        const ov = Math.min(g.end, w.end) - Math.max(g.start, w.start);
+        const shorter = Math.max(1, Math.min(g.end - g.start, w.end - w.start));
+        if (ov > 0 && ov / shorter >= 0.5 && ov > bestOv) { best = w; bestOv = ov; }
+      }
+      if (best) {
+        used.add(best);
+        const hrFrom = hrPref === "whoop" ? (best.avgHr != null ? best : g) : (g.avgHr != null ? g : best);
+        out.push({
+          both: true, start: g.start, name: g.name, type: g.type, durMin: g.durMin ?? best.durMin,
+          distM: g.distM || best.distM || null,
+          kcal: g.kcal != null && best.kcal != null ? (g.kcal + best.kcal) / 2 : g.kcal ?? best.kcal,
+          avgHr: hrFrom.avgHr, maxHr: hrFrom.maxHr, hrFrom: hrFrom.src, strain: best.strain,
+          alt: { whoopHr: best.avgHr, garminHr: g.avgHr, whoopKcal: best.kcal, garminKcal: g.kcal },
+        });
+      } else out.push({ ...g, both: false, hrFrom: "garmin" });
+    }
+    for (const w of ws) if (!used.has(w)) out.push({ ...w, both: false, hrFrom: "whoop" });
+    return out.sort((a, b) => b.start - a.start);
+  }
+
+  return { emptyDB, ingestWhoopRows, ingestGarminJSON, whoopKind, METRICS, agreement, mergedDaily, mergedWorkouts, dkey, median };
+})();
+if (typeof module !== "undefined") module.exports = L;
+</script><script>
+(function(){
+const $ = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const LS_DB = "bodylog-db-v1", LS_RULES = "bodylog-rules-v1";
+const useMiles = /^en-(US|LR|MM)/i.test(navigator.language || "");
+let db = L.emptyDB(), rules = {}, rangeDays = 30, merged = null;
+
+/* ---------- storage ---------- */
+const LS_KEY = "bodylog-key-v1";
+function loadRules(){ try{ const r = localStorage.getItem(LS_RULES); if (r) rules = JSON.parse(r) || {}; }catch(e){} }
+function saveRules(){ try{ localStorage.setItem(LS_RULES, JSON.stringify(rules)); }catch(e){} }
+
+/* ---------- helpers ---------- */
+const M = Object.fromEntries(L.METRICS.map(m => [m.key, m]));
+const fmt = (m, v) => {
+  if (v == null || !isFinite(v)) return "–";
+  const x = v * (m.scale || 1);
+  return x.toLocaleString(undefined, { minimumFractionDigits: m.dec, maximumFractionDigits: m.dec });
+};
+const SRC_TEXT = { whoop:"Whoop", garmin:"Garmin", avg:"Average of both", "garmin*":"Garmin, adjusted (Whoop missed it)", "whoop*":"Whoop, adjusted (Garmin missed it)" };
+const srcClass = f => f === "avg" ? "avg" : f && f.endsWith("*") ? "fill" : f;
+const srcHTML = f => f ? `<span class="src"><i class="${srcClass(f)}"></i>${SRC_TEXT[f]}</span>` : "";
+const parseKey = k => { const [y,m,d] = k.split("-").map(Number); return new Date(y, m-1, d); };
+const niceDate = (k, opt={month:"short", day:"numeric"}) => parseKey(k).toLocaleDateString(undefined, opt);
+const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function dateRange(){
+  const keys = Object.keys(db.daily).sort();
+  if (!keys.length) return [];
+  const end = parseKey(keys[keys.length-1]);
+  const start = rangeDays ? new Date(end.getFullYear(), end.getMonth(), end.getDate() - rangeDays + 1) : parseKey(keys[0]);
+  const out = [];
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) out.push(L.dkey(d));
+  return out;
+}
+
+/* ---------- unlock ---------- */
+const b64 = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const toB64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+let blob = null, generated = null, status = null;
+async function fetchBlob(){
+  const r = await fetch("data.enc.json?t=" + Date.now(), { cache: "no-store" });
+  if (!r.ok) throw new Error("no-data");
+  return r.json();
+}
+async function keyFromPass(pass, saltB64, iter){
+  const base = await crypto.subtle.importKey("raw", new TextEncoder().encode(pass), "PBKDF2", false, ["deriveKey"]);
+  return crypto.subtle.deriveKey({ name:"PBKDF2", hash:"SHA-256", salt:b64(saltB64), iterations:iter }, base, { name:"AES-GCM", length:256 }, true, ["decrypt"]);
+}
+async function openWith(key){
+  const pt = await crypto.subtle.decrypt({ name:"AES-GCM", iv:b64(blob.iv) }, key, b64(blob.data));
+  const payload = JSON.parse(new TextDecoder().decode(pt));
+  db = payload.db; generated = payload.generated; status = payload.status || {};
+  db.sources = db.sources || {};
+}
+async function tryStoredKey(){
+  try{
+    const s = JSON.parse(localStorage.getItem(LS_KEY) || "null");
+    if (!s || s.salt !== blob.salt) return false;
+    const key = await crypto.subtle.importKey("raw", b64(s.k), "AES-GCM", false, ["decrypt"]);
+    await openWith(key); return true;
+  }catch(e){ try{ localStorage.removeItem(LS_KEY); }catch(_){} return false; }
+}
+async function unlock(pass, remember){
+  const key = await keyFromPass(pass, blob.salt, blob.iter || 310000);
+  await openWith(key);
+  if (remember){ try{ localStorage.setItem(LS_KEY, JSON.stringify({ salt: blob.salt, k: toB64(await crypto.subtle.exportKey("raw", key)) })); }catch(e){} }
+}
+function ago(iso){
+  const mins = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (mins < 60) return `${Math.max(1, mins)} min ago`;
+  const h = Math.round(mins / 60); if (h < 36) return `${h} h ago`;
+  return `${Math.round(h / 24)} days ago`;
+}
+
+/* ---------- charts ---------- */
+function rolling(arr, w=7){
+  return arr.map((_, i) => {
+    const win = arr.slice(Math.max(0, i-w+1), i+1).filter(v => v != null);
+    return win.length >= 3 ? win.reduce((a,b)=>a+b,0)/win.length : null;
+  });
+}
+function chart(cfg){
+  const { key, title, dates } = cfg;
+  const m = M[key], sc = m.scale || 1;
+  const mergedV = dates.map(k => merged.days[k]?.[key]?.v ?? null);
+  const froms = dates.map(k => merged.days[k]?.[key]?.from ?? null);
+  const wV = dates.map(k => db.daily[k]?.whoop?.[key] ?? null);
+  const gV = dates.map(k => db.daily[k]?.garmin?.[key] ?? null);
+  const present = mergedV.filter(v => v != null);
+  if (!present.length) return null;
+  const smooth = dates.length > 45 && !cfg.bar;
+  const view = a => (smooth ? rolling(a) : a).map(v => v == null ? null : v * sc);
+  const S = { merged: view(mergedV), w: m.shared ? view(wV) : [], g: m.shared ? view(gV) : [] };
+  const all = [...S.merged, ...S.w, ...S.g].filter(v => v != null);
+  let lo = Math.min(...all), hi = Math.max(...all);
+  if (cfg.bar) lo = 0;
+  const padY = (hi - lo) * 0.1 || Math.abs(hi) * 0.1 || 1;
+  if (!cfg.bar) lo -= padY; hi += padY;
+  const W = 560, H = 190, l = 42, r = 8, t = 10, b = 24, n = dates.length;
+  const step = (W - l - r) / Math.max(1, n - 1);
+  const x = i => cfg.bar ? l + (i + .5) * (W - l - r) / n : l + i * step;
+  const y = v => t + (hi - v) / (hi - lo) * (H - t - b);
+  const path = arr => { let d = "", pen = false; arr.forEach((v, i) => { if (v == null){ pen = false; return; } d += (pen ? "L" : "M") + x(i).toFixed(1) + " " + y(v).toFixed(1); pen = true; }); return d; };
+  const ticks = [0, .5, 1].map(f => lo + (hi - lo) * f);
+  const dec = (hi - lo) * 1 < 6 ? 1 : 0;
+  let svg = `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(title)} over ${n} days">`;
+  ticks.forEach(v => { svg += `<line class="grid" x1="${l}" x2="${W-r}" y1="${y(v)}" y2="${y(v)}"/><text class="axis" x="${l-6}" y="${y(v)+4}" text-anchor="end">${(+v.toFixed(dec)).toLocaleString()}</text>`; });
+  const xl = n > 1 ? [0, Math.floor((n-1)/2), n-1] : [0];
+  xl.forEach((i, j) => svg += `<text class="axis" x="${x(i)}" y="${H-6}" text-anchor="${j===0?"start":j===xl.length-1?"end":"middle"}">${niceDate(dates[i])}</text>`);
+  if (cfg.bar){
+    const bw = Math.max(1, (W - l - r) / n * 0.7);
+    S.merged.forEach((v, i) => { if (v != null) svg += `<rect x="${x(i)-bw/2}" y="${y(v)}" width="${bw}" height="${y(lo)-y(v)}" rx="${Math.min(2,bw/2)}" fill="var(--garmin)" opacity=".85"/>`; });
+  } else {
+    if (m.shared){
+      svg += `<path d="${path(S.w)}" fill="none" stroke="var(--whoop)" stroke-width="1.5" opacity=".6"/>`;
+      svg += `<path d="${path(S.g)}" fill="none" stroke="var(--garmin)" stroke-width="1.5" opacity=".6"/>`;
+    }
+    const col = !m.shared ? (m.def === "whoop" ? "var(--whoop)" : "var(--garmin)") : "var(--ink)";
+    svg += `<path d="${path(S.merged)}" fill="none" stroke="${col}" stroke-width="2.75" stroke-linejoin="round" stroke-linecap="round"/>`;
+    if (m.shared && n <= 120) froms.forEach((f, i) => { if (f && f.endsWith("*") && S.merged[i] != null) svg += `<circle cx="${x(i)}" cy="${y(S.merged[i])}" r="3.5" fill="var(--panel)" stroke="var(--flag)" stroke-width="2"/>`; });
+  }
+  svg += `<line class="cursor" x1="0" x2="0" y1="${t}" y2="${H-b}" stroke="var(--muted)" stroke-dasharray="3 3" opacity="0"/>`;
+  svg += `<rect class="hit" x="${l}" y="0" width="${W-l-r}" height="${H}" fill="transparent"/></svg>`;
+
+  const avg = present.reduce((a,b)=>a+b,0) / present.length;
+  const legend = m.shared ? `<div class="legend"><span><i class="ln" style="border-color:var(--ink);border-top-width:3px"></i>Merged</span><span><i class="ln" style="border-color:var(--whoop)"></i>Whoop</span><span><i class="ln" style="border-color:var(--garmin)"></i>Garmin</span></div>` : `<div class="legend"><span>${m.def === "whoop" ? "Whoop" : "Garmin"} only</span></div>`;
+  const el = document.createElement("div");
+  el.className = "chart";
+  el.innerHTML = `<div class="ch"><h3>${esc(title)}</h3><div class="avg">${fmt(m, avg)}<small>${m.unit ? m.unit + " " : ""}avg</small></div></div>${legend}${svg}${smooth ? `<p class="note">Lines show 7-day averages.</p>` : ""}<div class="tip"></div>`;
+  const sv = $("svg", el), tip = $(".tip", el), cur = $(".cursor", el);
+  const move = ev => {
+    const rect = sv.getBoundingClientRect(), k = rect.width / W;
+    const px = (ev.clientX - rect.left) / k;
+    let i = cfg.bar ? Math.floor((px - l) / ((W - l - r) / n)) : Math.round((px - l) / step);
+    i = Math.max(0, Math.min(n - 1, i));
+    const row = merged.days[dates[i]]?.[key];
+    let h = `<b>${niceDate(dates[i], {weekday:"short", month:"short", day:"numeric"})}</b><br>`;
+    h += row ? `${fmt(m, row.v)} ${m.unit} · ${SRC_TEXT[row.from]}` : "No reading";
+    if (m.shared && row && (row.w != null || row.g != null)) h += `<br><span style="opacity:.75">Whoop ${fmt(m,row.w)} · Garmin ${fmt(m,row.g)}</span>`;
+    tip.innerHTML = h;
+    const er = el.getBoundingClientRect();
+    const cx = rect.left - er.left + x(i) * k;
+    tip.style.left = Math.max(90, Math.min(el.clientWidth - 90, cx)) + "px";
+    tip.style.top = (rect.top - er.top + 8) + "px";
+    tip.classList.add("on");
+    cur.setAttribute("x1", x(i)); cur.setAttribute("x2", x(i)); cur.setAttribute("opacity", ".6");
+  };
+  $(".hit", el).addEventListener("pointermove", move);
+  $(".hit", el).addEventListener("pointerleave", () => { tip.classList.remove("on"); cur.setAttribute("opacity", "0"); });
+  return el;
+}
+
+/* ---------- render ---------- */
+function render(){
+  $("#lock").classList.add("hidden");
+  $("#dash").classList.remove("hidden");
+  $("#topActions").classList.remove("hidden");
+  renderRules();
+  const bad = ["whoop","garmin"].filter(k => status[k] && !status[k].ok);
+  $("#updated").textContent = generated ? `Updated ${ago(generated)}` : "";
+  $("#updated").title = generated ? new Date(generated).toLocaleString() : "";
+  $("#syncBanner").classList.toggle("hidden", !bad.length);
+  if (bad.length) $("#syncMsg").textContent = `The last morning pull couldn't reach ${bad.map(k => k === "whoop" ? "Whoop" : "Garmin").join(" or ")}. Showing the most recent data it has. Check the Actions tab in your GitHub repo for the error.`;
+  if (!Object.keys(db.daily).length && !db.workouts.length){ $("#dash").innerHTML = `<p class="sub" style="padding-top:28px">The sync ran but found no data yet. Once your devices sync to their apps, the next morning run will fill this in.</p>`; return; }
+  merged = L.mergedDaily(db, rules);
+  const dates = dateRange();
+
+  // latest
+  const keys = Object.keys(merged.days).sort();
+  const latestK = [...keys].reverse().find(k => merged.days[k].hrv || merged.days[k].sleepMin || merged.days[k].recovery) || keys[keys.length-1];
+  const near = key => { const i = keys.indexOf(latestK); for (let j = i; j >= Math.max(0, i-2); j--){ const v = merged.days[keys[j]]?.[key]; if (v) return { ...v, k: keys[j] }; } return null; };
+  $("#latestTitle").textContent = latestK ? niceDate(latestK, {weekday:"long", month:"long", day:"numeric"}) : "Latest";
+  $("#latestSub").textContent = "Your most recent night and day. Each number shows which device it came from.";
+  const statKeys = ["recovery","hrv","rhr","sleepMin","steps","strain","bodyBattery","resp"];
+  $("#stats").innerHTML = statKeys.map(k => {
+    const v = near(k); if (!v) return "";
+    const m = M[k];
+    let extra = "";
+    if (k === "sleepMin"){
+      const st = merged.days[v.k].stages;
+      if (st && st.deep != null){
+        const tot = (st.deep||0)+(st.rem||0)+(st.light||0)+(st.awake||0);
+        extra = `<div class="stagebar" title="Deep ${Math.round(st.deep)}m · REM ${Math.round(st.rem)}m · Light ${Math.round(st.light)}m · Awake ${Math.round(st.awake||0)}m">${["deep","rem","light","awake"].map(s => `<span class="st-${s}" style="width:${(st[s]||0)/tot*100}%"></span>`).join("")}</div>`;
+      }
+    }
+    return `<div class="stat"><div class="lab">${m.label}</div><div class="val">${fmt(m, v.v)}<small>${m.unit}</small></div>${extra}${srcHTML(v.from)}</div>`;
+  }).join("");
+
+  // charts
+  const box = $("#charts"); box.innerHTML = "";
+  [["hrv","Heart rate variability"],["rhr","Resting heart rate"],["sleepMin","Sleep (hours)"],["steps","Steps",true],["recovery","Whoop recovery"],["bodyBattery","Garmin Body Battery peak"],["kcal","Calories burned"],["resp","Respiratory rate"]]
+    .forEach(([key, title, bar]) => { const c = chart({ key, title, dates, bar }); if (c) box.appendChild(c); });
+  if (!box.children.length) box.innerHTML = `<p class="sub">No daily readings in this range. Try a longer range.</p>`;
+
+  // agreement
+  const rowsA = L.METRICS.filter(m => m.shared).map(m => {
+    const a = L.agreement(db, m.key); if (!a.n) return "";
+    const isSleep = m.key === "sleepMin";
+    const u = isSleep ? "min" : m.unit, d = isSleep ? 0 : m.dec;
+    const f = v => (v > 0 ? "+" : "") + v.toFixed(d);
+    const rTxt = a.r == null || a.n < 5 ? "–" : a.r > .7 ? "Closely" : a.r > .4 ? "Somewhat" : "Loosely";
+    const mode = rules[m.key] || m.def;
+    const using = mode === "avg" ? srcHTML("avg") : srcHTML(mode);
+    return `<tr><td>${m.label}</td><td class="r">${a.n}</td><td class="r">${f(a.offset)} ${u}</td><td class="r">${a.typicalGap.toFixed(d)} ${u}</td><td>${rTxt}</td><td>${using}</td></tr>`;
+  }).join("");
+  $("#agree").innerHTML = rowsA ? `<thead><tr><th>Measurement</th><th class="r">Nights both</th><th class="r">Garmin vs Whoop</th><th class="r">Typical gap</th><th>Move together</th><th>Using</th></tr></thead><tbody>${rowsA}</tbody>` : `<tbody><tr><td>Add exports from both devices to compare them.</td></tr></tbody>`;
+
+  // workouts
+  const startK = dates[0], startT = startK ? parseKey(startK).getTime() : 0;
+  const ws = L.mergedWorkouts(db, rules).filter(w => w.start >= startT);
+  const dist = mtr => mtr ? (useMiles ? (mtr/1609.34).toFixed(2) + " mi" : (mtr/1000).toFixed(2) + " km") : "–";
+  const dur = mn => mn == null ? "–" : mn >= 60 ? `${Math.floor(mn/60)}h ${String(Math.round(mn%60)).padStart(2,"0")}m` : `${Math.round(mn)}m`;
+  $("#wkSub").textContent = `Sessions recorded on both devices are combined: distance from Garmin's GPS, strain from Whoop, calories averaged, heart rate from ${rules.workoutHr === "whoop" ? "Whoop" : "Garmin"} (change in Source rules).`;
+  $("#workouts").innerHTML = ws.length ? `<thead><tr><th>Date</th><th>Activity</th><th class="r">Duration</th><th class="r">Distance</th><th class="r">Avg HR</th><th class="r">Calories</th><th class="r">Strain</th><th>Recorded by</th></tr></thead><tbody>${
+    ws.slice(0, 250).map(w => {
+      const dt = new Date(w.start);
+      const hrTitle = w.both ? `Whoop ${w.alt.whoopHr ?? "–"} · Garmin ${w.alt.garminHr ?? "–"}` : "";
+      const kTitle = w.both ? `Whoop ${w.alt.whoopKcal ?? "–"} · Garmin ${w.alt.garminKcal ?? "–"}` : "";
+      return `<tr><td>${dt.toLocaleDateString(undefined,{month:"short",day:"numeric"})} <span class="sub">${dt.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"})}</span></td><td>${esc(w.name)}</td><td class="r">${dur(w.durMin)}</td><td class="r">${dist(w.distM)}</td><td class="r" title="${hrTitle}">${w.avgHr != null ? Math.round(w.avgHr) + ` <span class="src"><i class="${w.hrFrom}"></i></span>` : "–"}</td><td class="r" title="${kTitle}">${w.kcal != null ? Math.round(w.kcal).toLocaleString() : "–"}</td><td class="r">${w.strain != null ? w.strain.toFixed(1) : "–"}</td><td><span class="chip ${w.both?"both":""}">${w.both ? "Both" : w.src === "whoop" ? "Whoop" : "Garmin"}</span></td></tr>`;
+    }).join("")}</tbody>` : `<tbody><tr><td>No workouts in this range.</td></tr></tbody>`;
+}
+
+function renderRules(){
+  const opts = [["whoop","Whoop first"],["garmin","Garmin first"],["avg","Average of both"]];
+  let h = L.METRICS.filter(m => m.shared).map(m => {
+    const cur = rules[m.key] || m.def;
+    return `<div class="rule"><b>${m.label}</b><select data-rule="${m.key}" aria-label="${m.label} source">${opts.map(([v,t]) => `<option value="${v}" ${v===cur?"selected":""}>${t}${v===m.def?" (default)":""}</option>`).join("")}</select><p>${m.why}</p></div>`;
+  }).join("");
+  const hr = rules.workoutHr || "garmin";
+  h += `<div class="rule"><b>Workout heart rate</b><select data-rule="workoutHr" aria-label="Workout heart rate source"><option value="garmin" ${hr==="garmin"?"selected":""}>Garmin (default)</option><option value="whoop" ${hr==="whoop"?"selected":""}>Whoop</option></select><p>Both use optical sensors, which lag and drift during lifting and intervals. If you wear the Whoop on your bicep or in Whoop Body clothing, pick Whoop; upper-arm placement moves less. If you pair a chest strap with your Garmin, keep Garmin. Distance always comes from Garmin's GPS.</p></div>`;
+  h += `<div class="rule"><b>Steps, Body Battery, stress</b><p>Garmin only.</p></div><div class="rule"><b>Recovery, strain, skin temperature</b><p>Whoop only. These are each company's own scores, so there's nothing to reconcile.</p></div>`;
+  $("#rules").innerHTML = h;
+  $$("#rules select").forEach(s => s.addEventListener("change", () => { rules[s.dataset.rule] = s.value; saveRules(); render(); }));
+}
+
+/* ---------- wiring ---------- */
+loadRules();
+$$("#range button").forEach(b => b.addEventListener("click", () => {
+  rangeDays = +b.dataset.d; $$("#range button").forEach(x => x.setAttribute("aria-pressed", x === b)); render();
+}));
+const rulesDlg = $("#rulesDlg");
+$("#openRules").addEventListener("click", () => rulesDlg.showModal());
+$$("[data-close]").forEach(b => b.addEventListener("click", () => b.closest("dialog").close()));
+$("#resetRules").addEventListener("click", () => { rules = {}; saveRules(); render(); });
+$("#lockBtn").addEventListener("click", () => { try{ localStorage.removeItem(LS_KEY); }catch(e){} location.reload(); });
+$("#unlockForm").addEventListener("submit", async e => {
+  e.preventDefault();
+  const msg = $("#unlockMsg"), btn = $("#unlockBtn");
+  btn.disabled = true; msg.textContent = "Unlocking…";
+  try{ await unlock($("#pass").value, $("#remember").checked); render(); }
+  catch(err){ msg.textContent = "That passphrase didn't open the data. Check it matches DASH_PASSPHRASE in your GitHub secrets."; btn.disabled = false; }
+});
+(async () => {
+  try{ blob = await fetchBlob(); }
+  catch(e){ $("#lockIntro").textContent = "No data has been published yet. Run the “Sync Whoop + Garmin” workflow once from your repo's Actions tab, wait for it to finish, then reload."; $("#unlockForm").classList.add("hidden"); return; }
+  if (await tryStoredKey()) render(); else $("#pass").focus();
+})();
+})();
+</script></body></html>
